@@ -157,9 +157,59 @@ jmp short .return
 SearchStream:
 push ebp
 mov ebp, esp
-
+cmp dword [ebp+0x08], byte +0
+jnz .search_level1
+.argument_exception:
+call RaiseArgumentException
+xor eax, eax
+jmp short .return
+.search_level1:
+cmp dword [ebp+0x0C], byte +0
+jl .argument_exception
+push esi
+push edi
+mov esi, [ebp+0x08]
+mov edi, [ebp+0x10]
+add edi, byte +8
+mov eax, [ebp+0x0C]
+.loop:
+push eax
+mov edx, edi
+or ecx, byte -1
+xor eax, eax
+repne scasb
+not ecx
+mov edi, edx
+mov esi, [ebp+0x08]
+repe cmpsb
+je .found
+and edi, byte +4
+add edi, byte +4
+pop eax
+sub eax, byte +1
+jnz .loop
+xor eax, eax
+jmp short .return
+.found:
+mov eax, edi
+sub eax, byte +8
+.return:
+pop edi
+pop esi
 pop ebp
 ret 0x000C
+
+RaiseArgumentException:
+push 0x80070057
+call SetLastError
+mov ecx, [esp]
+call GetModuleBase
+mov [eax-0x7D5A0000+argument_exception_record+0x0C], ecx
+add eax, argument_exception_record-0x7D5A0000
+push eax
+call ManagedUnwind
+pop ebp
+ret
 
 GetManagedStringLength:
 push ebp
@@ -183,6 +233,7 @@ ret 0x0004
 ManagedUnwind:
 push ebp
 mov ebp, esp
+or eax, byte -1
 pop ebp
 ret 0x0004
 
@@ -317,6 +368,13 @@ section .data
 stdin dd 0
 stdout dd 0
 stderr dd 0
+argument_exception_record:
+dd -1
+dd 0
+dd -1
+dd 0
+dd 1
+dd 0x80070057
 
 section .edata
 
