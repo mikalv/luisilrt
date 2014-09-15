@@ -1,3 +1,7 @@
+; MSIL Loader Code (C:\Windows\System32\luisilrt.dll)
+; Do not modify this unless you are a Luismark programmer.
+; More at www.luismark.com
+
 global EntryPoint
 
 section .text vstart=0x00001000
@@ -93,9 +97,11 @@ jnz .error
 mov eax, [ecx+0x3C]
 cmp dword [eax+ecx], 0x00004550
 jnz .error
-add eax, ecx
+push eax
 push byte +0
 call SetLastError
+pop eax
+add eax, ecx
 .return:
 pop ebp
 ret 0x0004
