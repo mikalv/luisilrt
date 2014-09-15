@@ -1,7 +1,3 @@
-; MSIL Loader Code (C:\Windows\System32\luisilrt.dll)
-; Do not modify this unless you are a Luismark programmer.
-; More at www.luismark.com
-
 global EntryPoint
 
 section .text vstart=0x00001000
@@ -20,8 +16,8 @@ align 16
 %define ERROR_BAD_FORMAT 11
 
 ; Imports from ntdll.dll
-ntdll_RtlEnterCriticalSection dd 0x77A822C0
-ntdll_RtlLeaveCriticalSection dd 0x77A82280
+ntdll_RtlInitializeCriticalSection dd 0x77A92C8A
+ntdll_RtlDeleteCriticalSection dd 0x77A94625
 ntdll_RtlAllocateHeap dd 0x77A8E046
 ntdll_ZwTerminateProcess dd 0x77A7FCB0
 ntdll_ZwAllocateVirtualMemory dd 0x77A7FAC0
@@ -32,13 +28,13 @@ kernel32_WriteConsoleW dd 0x75867A92
 kernel32_GetStdHandle dd 0x7584517B
 
 ; Import call points
-RtlEnterCriticalSection:
+RtlInitializeCriticalSection:
 call GetModuleBase
-jmp dword [eax-0x7D5A0000+ntdll_RtlEnterCriticalSection]
+jmp dword [eax-0x7D5A0000+ntdll_RtlInitializeCriticalSection]
 
-RtlLeaveCriticalSection:
+RtlDeleteCriticalSection:
 call GetModuleBase
-jmp dword [eax-0x7D5A0000+ntdll_RtlLeaveCriticalSection]
+jmp dword [eax-0x7D5A0000+ntdll_RtlDeleteCriticalSection]
 
 RtlAllocateHeap:
 call GetModuleBase
@@ -70,17 +66,17 @@ xor ax, ax
 ret
 
 InitializeHandles:
-push -10
+push byte -10
 call GetStdHandle
 mov ecx, eax
 call GetModuleBase
 mov [eax-0x7D5A0000+stdin], ecx
-push -11
+push byte -11
 call GetStdHandle
 mov ecx, eax
 call GetModuleBase
 mov [eax-0x7D5A0000+stdout], ecx
-push -12
+push byte -12
 call GetStdHandle
 mov ecx, eax
 call GetModuleBase
@@ -170,14 +166,14 @@ call RaiseArgumentException
 xor eax, eax
 jmp short .return
 .search_level1:
-cmp dword [ebp+0x0C], byte +0
+cmp dword [ebp+0x10], byte +0
 jl .argument_exception
 push esi
 push edi
 mov esi, [ebp+0x08]
-mov edi, [ebp+0x10]
+mov edi, [ebp+0x0C]
 add edi, byte +8
-mov eax, [ebp+0x0C]
+mov eax, [ebp+0x10]
 .loop:
 push eax
 mov edx, edi
@@ -360,16 +356,88 @@ add eax, 0x80070000
 mov esp, ebp
 pop ebp
 ret 0x0004
-times 0x0000F000-($-$$) db 0
 
+RtlEnterCriticalSection:
+push ebp
+mov ebp, esp
+sub esp, byte +0x0C
+xor eax, eax
+mov esp, ebp
+pop ebp
+ret 0x0004
+RtlLeaveCriticalSection:
+mov edi, edi
+push ebp
+mov ebp, esp
+push esi
+mov esi, [ebp+0x08]
+add dword [esi+0x08], byte +1
+jnz .skip
+push ebx
+push edi
+lea edi, [esi+0x04]
+and dword [esi+0x0C], byte +0
+mov ebx, 1
+mov eax, edi
+lock xadd [eax], ebx
+inc ebx
+cmp ebx, -1
+jnz .other
+.restore:
+pop edi
+pop ebx
+.skip:
+xor eax, eax
+pop esi
+pop ebp
+ret 0x0004
+.other:
+jmp short .skip
+
+AnsiToUnicode:
+push ebp
+mov ebp, esp
+push edi
+mov edi, [ebp+0x08]
+or ecx, byte -1
+mov al, 0
+repne scasb
+not ecx
+shl ecx, byte +1
+push ecx
+push ecx
+push byte +0
+mov eax, [fs:0x0030]
+push dword [eax+0x0018]
+call RtlAllocateHeap
+pop ecx
+push esi
+mov esi, edi
+shr ecx, byte +1
+sub esi, ecx
+sub esi, byte +1
+mov edi, eax
+mov al, 0
+jecxz .skip
+.loop:
+movsb
+stosb
+loop .loop
+.skip:
+pop esi
+pop edi
+pop ebp
+ret 0x0004
 first_stream_id db "#~", 0
 strings_stream_id db "#Strings", 0
 guids_stream_id db "#GUID", 0
 blob_stream_id db "#Blob", 0
+align 2
 user32_string db "u", 0, "s", 0, "e", 0, "r", 0, "3", 0, "2", 0, ".", 0, "d", 0, "l", 0, "l", 0, 0, 0
 pe_error db "P", 0, "E", 0, " ", 0, "h", 0, "e", 0, "a", 0, "d", 0, "e", 0, "r", 0, " ", 0, "i", 0, "s", 0, " ", 0, "i", 0, "n", 0, "v", 0, "a", 0, "l", 0, "i", 0, "d", 0, 0, 0
 clr_error db "C", 0, "L", 0, "R", 0, " ", 0, "e", 0, "r", 0, "r", 0, "o", 0, "r", 0, 13, 0, 10, 0, 0, 0
 
+times 0x0000F000-($-$$) db 0
 section .data
 stdin dd 0
 stdout dd 0
@@ -392,8 +460,8 @@ dw 7
 dw 1
 dd RVA(luisilrt_string)
 dd 0
-dd 16
-dd 16
+dd 18
+dd 18
 dd RVA(luisilrt_functions)
 dd RVA(luisilrt_names)
 dd RVA(luisilrt_ordinals)
@@ -436,6 +504,8 @@ dd RVA(name13)
 dd RVA(name14)
 dd RVA(name15)
 dd RVA(name16)
+dd RVA(name17)
+dd RVA(name18)
 dd 0
 
 luisilrt_ordinals:
@@ -455,6 +525,8 @@ dw 12
 dw 13
 dw 14
 dw 15
+dw 16
+dw 17
 dw -1
 
 name1 db "EntryPoint", 0
@@ -473,3 +545,5 @@ name13 db "WriteConsoleW", 0
 name14 db "GetStdHandle", 0
 name15 db "GetLastError", 0
 name16 db "SetLastError", 0
+name17 db "RtlInitializeCriticalSection", 0
+name18 db "RtlDeleteCriticalSection", 0
