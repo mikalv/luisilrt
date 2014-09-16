@@ -15,18 +15,6 @@ align 16
 %define ERROR_SUCCESS 0
 %define ERROR_BAD_FORMAT 11
 
-; Imports from ntdll.dll
-ntdll_RtlInitializeCriticalSection dd 0x77A92C8A
-ntdll_RtlDeleteCriticalSection dd 0x77A94625
-ntdll_RtlAllocateHeap dd 0x77A8E046
-ntdll_ZwTerminateProcess dd 0x77A7FCB0
-ntdll_ZwAllocateVirtualMemory dd 0x77A7FAC0
-
-; Imports from kernel32.dll
-kernel32_LoadLibraryW dd 0x758448F3
-kernel32_WriteConsoleW dd 0x75867A92
-kernel32_GetStdHandle dd 0x7584517B
-
 ; Import call points
 RtlInitializeCriticalSection:
 call GetModuleBase
@@ -547,3 +535,90 @@ name15 db "GetLastError", 0
 name16 db "SetLastError", 0
 name17 db "RtlInitializeCriticalSection", 0
 name18 db "RtlDeleteCriticalSection", 0
+
+section .idata vstart=0x00013000
+dd RVA(ntdll_LookupTable)
+dd 1417161600
+dd 0
+dd RVA(ntdll_string)
+dd RVA(ntdll_imports)
+dd RVA(kernel32_LookupTable)
+dd 1417161600
+dd 0
+dd RVA(kernel32_string)
+dd RVA(kernel32_imports)
+dd 0
+dd 0
+dd 0
+dd 0
+dd 0
+
+ntdll_string:
+db "ntdll.dll", 0, 0, 0
+
+ntdll_LookupTable:
+dd RVA(ntdll_Function1)
+dd RVA(ntdll_Function2)
+dd RVA(ntdll_Function3)
+dd RVA(ntdll_Function4)
+dd RVA(ntdll_Function5)
+dd 0
+
+ntdll_imports:
+ntdll_RtlInitializeCriticalSection:
+dd RVA(ntdll_Function1)
+ntdll_RtlDeleteCriticalSection:
+dd RVA(ntdll_Function2)
+ntdll_RtlAllocateHeap:
+dd RVA(ntdll_Function3)
+ntdll_ZwTerminateProcess:
+dd RVA(ntdll_Function4)
+ntdll_ZwAllocateVirtualMemory:
+dd RVA(ntdll_Function5)
+dd 0
+
+ntdll_Function1:
+dw 1
+dw "RtlInitializeCriticalSection"
+ntdll_Function2:
+dw 2
+dw "RtlDeleteCriticalSection"
+ntdll_Function3:
+dw 3
+dw "RtlAllocateHeap"
+ntdll_Function4:
+dw 4
+dw "NtTerminateProcess"
+ntdll_Function5:
+dw 5
+dw "NtAllocateVirtualMemory"
+dw 0
+dw 0
+align 4
+
+kernel32_string db "kernel32.dll", 0, 0, 0, 0
+
+kernel32_LookupTable:
+dd RVA(kernel32_Function1)
+dd RVA(kernel32_Function2)
+dd RVA(kernel32_Function3)
+
+kernel32_imports:
+kernel32_LoadLibraryW:
+dd RVA(kernel32_Function1)
+kernel32_WriteConsoleW:
+dd RVA(kernel32_Function2)
+kernel32_GetStdHandle:
+dd RVA(kernel32_Function3)
+
+kernel32_Function1:
+dw 1
+dw "LoadLibraryW"
+kernel32_Function2:
+dw 2
+dw "WriteConsoleW"
+kernel32_Function3:
+dw 3
+dw "GetStdHandle"
+dw 0
+dw 0
