@@ -473,6 +473,8 @@ dd RVA(WriteConsoleW)
 dd RVA(GetStdHandle)
 dd RVA(GetLastError)
 dd RVA(SetLastError)
+dd RVA(RtlInitializeCriticalSection)
+dd RVA(RtlDeleteCriticalSection)
 dd 0
 
 luisilrt_names:
@@ -579,19 +581,19 @@ dd 0
 
 ntdll_Function1:
 dw 1
-dw "RtlInitializeCriticalSection"
+dw "RtlInitializeCriticalSection", 0
 ntdll_Function2:
 dw 2
-dw "RtlDeleteCriticalSection"
+dw "RtlDeleteCriticalSection", 0
 ntdll_Function3:
 dw 3
-dw "RtlAllocateHeap"
+dw "RtlAllocateHeap", 0
 ntdll_Function4:
 dw 4
-dw "NtTerminateProcess"
+dw "NtTerminateProcess", 0
 ntdll_Function5:
 dw 5
-dw "NtAllocateVirtualMemory"
+dw "NtAllocateVirtualMemory", 0
 dw 0
 dw 0
 align 4
@@ -602,6 +604,7 @@ kernel32_LookupTable:
 dd RVA(kernel32_Function1)
 dd RVA(kernel32_Function2)
 dd RVA(kernel32_Function3)
+dd 0
 
 kernel32_imports:
 kernel32_LoadLibraryW:
@@ -610,15 +613,16 @@ kernel32_WriteConsoleW:
 dd RVA(kernel32_Function2)
 kernel32_GetStdHandle:
 dd RVA(kernel32_Function3)
+dd 0
 
 kernel32_Function1:
 dw 1
-dw "LoadLibraryW"
+dw "LoadLibraryW", 0
 kernel32_Function2:
 dw 2
-dw "WriteConsoleW"
+dw "WriteConsoleW", 0
 kernel32_Function3:
 dw 3
-dw "GetStdHandle"
+dw "GetStdHandle", 0
 dw 0
 dw 0
