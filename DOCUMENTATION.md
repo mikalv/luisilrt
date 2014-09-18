@@ -2,7 +2,6 @@ The call stack is composed of 16-byte structures:
 
 <table>
     <th>
-        <td>Offset</td>
         <td>Position</td>
     </th>
     <tr>
