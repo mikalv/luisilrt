@@ -220,6 +220,99 @@ mov eax, [esp+0x04]
 mov [fs:0x0034], eax
 ret 0x0004
 
+ProcessILOpcode:
+push ebp
+mov ebp, esp
+call GetModuleBase
+movzx edx, byte [eax-0x7D5A0000+cil_position]
+inc dword [eax-0x7D5A0000+cil_position]
+jmp dword [edx*4-0x7D5A0000+cil_opcode_table]
+
+.return:
+ProcessNop:
+pop ebp
+ret
+
+ProcessBreak:
+int3
+jmp short ProcessILOpcode.return
+
+ProcessLdarg0:
+push byte +0
+call LoadArgument
+jmp short ProcessILOpcode.return
+
+ProcessLdarg1:
+push byte +1
+call LoadArgument
+jmp short ProcessILOpcode.return
+
+ProcessLdarg2:
+push byte +2
+call LoadArgument
+jmp short ProcessILOpcode.return
+
+ProcessLdarg3:
+push byte +3
+call LoadArgument
+jmp short ProcessILOpcode.return
+
+ProcessLdloc0:
+push byte +0
+call LoadLocal
+jmp short ProcessILOpcode.return
+
+ProcessLdloc1:
+push byte +1
+call LoadLocal
+jmp short ProcessILOpcode.return
+
+ProcessLdloc2:
+push byte +2
+call LoadLocal
+jmp short ProcessILOpcode.return
+
+ProcessLdloc3:
+push byte +3
+call LoadLocal
+jmp short ProcessILOpcode.return
+
+ProcessStloc0:
+push byte +0
+call StoreLocal
+jmp ProcessILOpcode.return
+
+ProcessStloc1:
+push byte +1
+call StoreLocal
+jmp ProcessILOpcode.return
+
+ProcessStloc2:
+push byte +2
+call StoreLocal
+jmp ProcessILOpcode.return
+
+ProcessStloc3:
+push byte +3
+call StoreLocal
+jmp ProcessILOpcode.return
+
+
+LoadArgument:
+push ebp
+mov ebp, esp
+call GetModuleBase
+mov edx, [eax-0x7D5A0000+cil_callstack]
+mov ecx, [edx+0x04]
+add ecx, 0x0400
+mov eax, [ebp+0x08]
+shl eax, 2
+add ecx, eax
+
+LoadLocal:
+
+StoreLocal:
+
 ManagedUnwind:
 push ebp
 mov ebp, esp
@@ -311,6 +404,52 @@ mov eax, [fs:0x0030]
 push dword [eax+0x0018]
 call RtlAllocateHeap
 mov [ebp-0x30], eax
+push dword 4096
+push byte +0
+mov eax, [fs:0x0030]
+push dword [eax+0x0018]
+call RtlAllocateHeap
+add eax, 0x0FF0
+mov [cil_callstack], eax
+mov ecx, [ebp-0x0C]
+mov [eax], ecx
+push eax
+push dword 0x0600
+push byte +0
+mov eax, [fs:0x0030]
+push dword [eax+0x0018]
+call RtlAllocateHeap
+mov edx, eax
+pop eax
+mov [eax+0x04], edx
+push eax
+push byte +64
+push byte +0
+mov eax, [fs:0x0030]
+push dword [eax+0x0018]
+call RtlAllocateHeap
+mov edx, eax
+pop eax
+mov [eax+0x08], edx
+push eax
+push dword 0x0008
+push byte +0
+mov eax, [fs:0x0030]
+push dword [eax+0x0018]
+call RtlAllocateHeap
+mov edx, eax
+pop eax
+mov [eax+0x0C], edx
+or dword [edx], byte -1
+mov dword [edx+4], .return
+.cil_loop:
+call ProcessILOpcode
+call GetLastError
+test eax, eax
+jnz .cil_loop
+call ManagedUnwind
+test eax, eax
+jns .cil_loop
 push dword user32_string
 call LoadLibraryW
 jmp short .return
@@ -430,6 +569,11 @@ section .data
 stdin dd 0
 stdout dd 0
 stderr dd 0
+cil_position dd 0
+cil_stack_position dd 0
+cil_callstack dd 0
+cil_callstack_pos dd 0
+
 argument_exception_record:
 dd -1
 dd 0
@@ -437,6 +581,264 @@ dd -1
 dd 0
 dd 1
 dd 0x80070057
+
+cil_opcode_table:
+dd ProcessNop
+dd ProcessBreak
+dd ProcessLdarg0
+dd ProcessLdarg1
+dd ProcessLdarg2
+dd ProcessLdarg3
+dd ProcessLdloc0
+dd ProcessLdloc1
+dd ProcessLdloc2
+dd ProcessLdloc3
+dd ProcessStloc0
+dd ProcessStloc1
+dd ProcessStloc2
+dd ProcessStloc3
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
+dd ProcessILOpcode.return
 
 section .edata
 
