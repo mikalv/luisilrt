@@ -173,7 +173,7 @@ mov edi, edx
 mov esi, [ebp+0x08]
 repe cmpsb
 je .found
-and edi, byte +4
+and edi, byte -4
 add edi, byte +4
 pop eax
 sub eax, byte +1
@@ -224,9 +224,12 @@ ProcessILOpcode:
 push ebp
 mov ebp, esp
 call GetModuleBase
-movzx edx, byte [eax-0x7D5A0000+cil_position]
+mov edx, [eax-0x7D5A0000+cil_position]
+movzx edx, word [edx]
 inc dword [eax-0x7D5A0000+cil_position]
-jmp dword [edx*4-0x7D5A0000+cil_opcode_table]
+mov edx, [eax+edx*4-0x7D5A0000+cil_opcode_table]
+lea edx, [edx+eax-0x7D5A0000]
+jmp edx
 
 .return:
 ProcessNop:
@@ -297,8 +300,52 @@ push byte +3
 call StoreLocal
 jmp ProcessILOpcode.return
 
+ProcessLdargS:
+call GetModuleBase
+mov edx, [eax-0x7D5A0000+cil_position]
+movzx ecx, byte [edx]
+push ecx
+inc dword [eax-0x7D5A0000+cil_position]
+call LoadArgument
+jmp ProcessILOpcode.return
+
+ProcessLdlocS:
+call GetModuleBase
+mov edx, [eax-0x7D5A0000+cil_position]
+movzx ecx, byte [edx]
+push ecx
+inc dword [eax-0x7D5A0000+cil_position]
+call LoadArgument
+jmp ProcessILOpcode.return
 
 LoadArgument:
+push ebp
+mov ebp, esp
+call GetModuleBase
+mov edx, [eax-0x7D5A0000+cil_callstack]
+mov ecx, [edx+0x08]
+add ecx, 0x0400
+mov eax, [ebp+0x08]
+shl eax, 3
+add ecx, eax
+mov eax, [ecx]
+test dword [ecx+0x04], 64
+jnz .reference
+cmp dword [ecx+0x04], byte +1
+jz .return
+cmp dword [ecx+0x08], byte +18
+jz .return
+mov eax, [eax]
+jmp short .return
+.reference:
+mov eax, [eax]
+mov eax, [eax]
+.return:
+
+pop ebp
+ret
+
+LoadLocal:
 push ebp
 mov ebp, esp
 call GetModuleBase
@@ -308,10 +355,47 @@ add ecx, 0x0400
 mov eax, [ebp+0x08]
 shl eax, 2
 add ecx, eax
-
-LoadLocal:
+mov eax, [ecx]
+test dword [ecx+0x04], 64
+jnz .reference
+cmp dword [ecx+0x04], byte +1
+jz .return
+cmp dword [ecx+0x08], byte +18
+jz .return
+mov eax, [eax]
+jmp short .return
+.reference:
+mov eax, [eax]
+mov eax, [eax]
+.return:
+pop ebp
+ret 0x0004
 
 StoreLocal:
+push ebp
+mov ebp, esp
+call GetModuleBase
+mov edx, [eax-0x7D5A0000+cil_callstack]
+mov ecx, [edx+0x04]
+add ecx, 0x0400
+mov eax, [ebp+0x08]
+shl eax, 2
+add ecx, eax
+mov eax, [ebp+0x0C]
+test dword [ecx+0x04], 64
+jnz .reference
+cmp dword [ecx+0x04], byte +1
+jz .return
+cmp dword [ecx+0x08], byte +18
+jz .return
+mov [ecx], eax
+jmp short .return
+.reference:
+mov ecx, [ecx]
+mov [ecx], eax
+.return:
+pop ebp
+ret 0x0008
 
 ManagedUnwind:
 push ebp
@@ -442,6 +526,19 @@ pop eax
 mov [eax+0x0C], edx
 or dword [edx], byte -1
 mov dword [edx+4], .return
+push dword stack_init_string
+call WriteText
+mov eax, [ebp-0x0C]
+and eax, 0xFF000000
+cmp eax, 0x06000000
+jnz near .clr_error
+push dword [ebp-0x0C]
+call NumberToString
+push dword input
+push eax
+call wstrcpy
+push dword entry_method_loaded
+call WriteText
 .cil_loop:
 call ProcessILOpcode
 call GetLastError
@@ -555,6 +652,81 @@ pop esi
 pop edi
 pop ebp
 ret 0x0004
+
+NumberToString:
+push ebp
+mov ebp, esp
+sub esp, byte +0x04
+push byte +20
+push byte +0
+mov eax, [fs:0x0030]
+push dword [eax+0x0018]
+call RtlAllocateHeap
+mov [ebp-0x04], eax
+mov [ebp-0x08], eax
+mov eax, [ebp+0x08]
+.loop1:
+mov ecx, 10
+xor edx, edx
+div ecx
+add dl, 0x30
+mov ecx, [ebp-0x04]
+mov [ecx], dl
+mov byte [ecx+1], 0
+add dword [ebp-0x04], byte +2
+test eax, eax
+jnz .loop1
+mov eax, [ebp-0x08]
+mov edx, [ebp-0x04]
+sub edx, byte +1
+.loop2:
+mov cl, [eax]
+mov ch, [edx]
+mov [eax], ch
+mov [edx], cl
+add eax, 1
+sub edx, 1
+cmp eax, edx
+jl .loop2
+mov eax, [ebp-0x08]
+xor ecx, ecx
+lea edx, [eax+20]
+.loop3:
+mov cx, [eax]
+xchg cl, ch
+mov [eax], cx
+add eax, byte +2
+cmp eax, edx
+jnz .loop3
+mov eax, [ebp-0x08]
+mov esp, ebp
+pop ebp
+ret
+
+wstrcpy:
+push ebp
+mov ebp, esp
+sub esp, byte 0x08
+mov eax, [ebp+0x08]
+mov [ebp-0x04], eax
+mov eax, [ebp+0x0C]
+mov [ebp-0x08], eax
+.loop_process:
+mov eax, [ebp-0x04]
+mov edx, [ebp-0x08]
+mov cx, [edx]
+mov [eax], cx
+add dword [ebp-0x04], byte 2
+add dword [ebp-0x08], byte 2
+.start_loop:
+test cl, cl
+jnz .loop_process
+mov eax, [ebp-0x04]
+mov byte [eax], 0
+mov esp, ebp
+pop ebp
+ret 0x0008
+
 first_stream_id db "#~", 0
 strings_stream_id db "#Strings", 0
 guids_stream_id db "#GUID", 0
@@ -563,6 +735,9 @@ align 2
 user32_string db "u", 0, "s", 0, "e", 0, "r", 0, "3", 0, "2", 0, ".", 0, "d", 0, "l", 0, "l", 0, 0, 0
 pe_error db "P", 0, "E", 0, " ", 0, "h", 0, "e", 0, "a", 0, "d", 0, "e", 0, "r", 0, " ", 0, "i", 0, "s", 0, " ", 0, "i", 0, "n", 0, "v", 0, "a", 0, "l", 0, "i", 0, "d", 0, 0, 0
 clr_error db "C", 0, "L", 0, "R", 0, " ", 0, "e", 0, "r", 0, "r", 0, "o", 0, "r", 0, 13, 0, 10, 0, 0, 0
+stack_init_string db "T", 0, "h", 0, "e", 0, " ", 0, "c", 0, "a", 0, "l", 0, "l", 0, " ", 0, "s", 0, "t", 0, "a", 0, "c", 0, "k", 0, " ", 0, "w", 0, "a", 0, "s", 0, "i", 0, "n", 0, "i", 0, "t", 0, "i", 0, "a", 0, "l", 0, "i", 0, "z", 0, "e", 0, "d", 0, " ", 0, "s", 0, "u", 0, "c", 0, "c", 0, "e", 0, "s", 0, "f", 0, "u", 0, "l", 0, "l", 0, "y", 0, ".", 0, 13, 0, 10, 0, 0, 0
+entry_method_loaded db "M", 0, "a", 0, "i", 0, "n", 0, " ", 0, "m", 0, "e", 0, "t", 0, "h", 0, "o", 0, "d", 0, "l", 0, "o", 0, "a", 0, "d", 0, "e", 0, "d", 0, " ", 0, "s", 0, "u", 0, "c", 0, "c", 0, "e", 0, "s", 0, "s", 0, "f", 0, "u", 0, "l", 0, "l", 0, "y", 0, " ", 0, "w", 0, "i", 0, "t", 0, "h", 0, " ", 0, "R", 0, "I", 0, "D", 0
+input: times 10 dw 0x30
 
 times 0x0000F000-($-$$) db 0
 section .data
@@ -597,10 +772,10 @@ dd ProcessStloc0
 dd ProcessStloc1
 dd ProcessStloc2
 dd ProcessStloc3
+dd ProcessLdargS
 dd ProcessILOpcode.return
 dd ProcessILOpcode.return
-dd ProcessILOpcode.return
-dd ProcessILOpcode.return
+dd ProcessLdlocS
 dd ProcessILOpcode.return
 dd ProcessILOpcode.return
 dd ProcessILOpcode.return
