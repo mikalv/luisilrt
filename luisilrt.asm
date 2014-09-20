@@ -181,6 +181,7 @@ jnz .loop
 xor eax, eax
 jmp short .return
 .found:
+add esp, byte +4
 mov eax, edi
 sub eax, byte +8
 .return:
@@ -726,6 +727,32 @@ mov byte [eax], 0
 mov esp, ebp
 pop ebp
 ret 0x0008
+
+_CorExeMain:
+jmp EntryPoint
+
+_CorValidateImage:
+push dword [esp+0x04]
+call ValidatePEHeader
+test eax, eax
+jnz .error
+push 0x0E
+push eax
+call LocateDirectory
+xor eax, eax
+mov al, 1
+jmp short .return
+.error:
+xor eax, eax
+.return:
+ret 0x0004
+
+_CorDllMain:
+jmp short _CorExeMain
+
+_CorImageUnloading:
+xor eax, eax
+ret
 
 first_stream_id db "#~", 0
 strings_stream_id db "#Strings", 0
