@@ -155,7 +155,7 @@ xor eax, eax
 jmp short .return
 .search_level1:
 cmp dword [ebp+0x10], byte +0
-jl .argument_exception
+jle .argument_exception
 push esi
 push edi
 mov esi, [ebp+0x08]
