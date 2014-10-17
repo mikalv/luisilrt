@@ -432,7 +432,7 @@ push dword [ebp+0x08]
 call ValidatePEHeader
 test eax, eax
 jz near .pe_error
-push 14
+push byte +14
 push eax
 call LocateDirectory
 test eax, eax
